@@ -2,6 +2,7 @@ name: build-obfuscated
 
 on:
   push:
+    branches: [ main ]
     paths:
       - 'znq-rejoin.py'
       - '.github/workflows/obfuscate.yml'
@@ -10,7 +11,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     permissions:
       contents: write
 
@@ -18,7 +18,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Python
+      - name: Show repo tree (debug)
+        run: |
+          pwd
+          ls -la
+
+      - name: Setup Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -27,29 +32,31 @@ jobs:
         run: |
           python -m pip install -U pip
           pip install "pyarmor==8.5.10" || pip install pyarmor
+          pyarmor --version || true
 
-      - name: Obfuscate for Termux + Windows
+      - name: Obfuscate for Termux (android.aarch64) and Windows (windows.amd64)
         run: |
           rm -rf dist/znq
           mkdir -p dist
+          # Thử kiểu v8 (gen). Nếu lỗi, thử v7 (obfuscate)
           if python -c "import pyarmor.cli.__main__" 2>/dev/null; then
             python -m pyarmor gen \
               --platform android.aarch64 \
-              --platform linux.aarch64 \
               --platform windows.amd64 \
               -O dist/znq znq-rejoin.py || true
           fi
           if [ ! -f dist/znq/znq-rejoin.py ]; then
             pyarmor obfuscate \
               --platform android.aarch64 \
-              --platform linux.aarch64 \
               --platform windows.amd64 \
               -O dist/znq znq-rejoin.py
           fi
+          # Đóng gói & checksum
           tar -czf dist/znq_obf.tar.gz -C dist znq
           sha256sum dist/znq_obf.tar.gz > dist/znq_obf.sha256
+          ls -la dist
 
-      - name: Commit artifact back to repo
+      - name: Commit artifact to repo
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
