@@ -57,4 +57,3 @@ jobs:
           git add dist/znq || true
           git commit -m "chore: update obfuscated artifact" || echo "No changes"
           git push || true
-
